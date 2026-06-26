@@ -1,0 +1,128 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <title>Smart Parking Dashboard</title>
+  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+
+  <style>
+    body {
+      font-family: Arial;
+      background: #0f172a;
+      color: white;
+      text-align: center;
+    }
+
+    h1 { margin-top: 20px; }
+
+    .grid {
+      display: grid;
+      grid-template-columns: repeat(3, 120px);
+      gap: 15px;
+      justify-content: center;
+      margin-top: 30px;
+    }
+
+    .spot {
+      height: 100px;
+      border-radius: 10px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-weight: bold;
+      font-size: 18px;
+      background: gray;
+    }
+
+    .free { background: #22c55e; }
+    .occupied { background: #ef4444; }
+
+    .card {
+      margin-top: 30px;
+    }
+  </style>
+</head>
+
+<body>
+
+<h1>🚗 Smart Parking Dashboard</h1>
+
+<div id="grid" class="grid"></div>
+
+<div class="card">
+  <canvas id="chart" width="600" height="300"></canvas>
+</div>
+
+<script>
+
+const API = "http://localhost:8000/api/status";
+const HISTORY_API = "http://localhost:8000/api/history?limit=20";
+
+let chart;
+
+async function fetchStatus() {
+  const res = await fetch(API);
+  return await res.json();
+}
+
+async function fetchHistory() {
+  const res = await fetch(HISTORY_API);
+  return await res.json();
+}
+
+function renderGrid(data) {
+  const grid = document.getElementById("grid");
+  grid.innerHTML = "";
+
+  for (let i = 1; i <= 6; i++) {
+    const div = document.createElement("div");
+    div.classList.add("spot");
+
+    if (data[`spot${i}`] === 0) {
+      div.classList.add("free");
+      div.innerText = "FREE";
+    } else {
+      div.classList.add("occupied");
+      div.innerText = "BUSY";
+    }
+
+    grid.appendChild(div);
+  }
+}
+
+function renderChart(history) {
+  const labels = history.map(h => new Date(h.timestamp).toLocaleTimeString());
+  const values = history.map(h => h.occupancy_pct);
+
+  if (chart) chart.destroy();
+
+  const ctx = document.getElementById("chart");
+
+  chart = new Chart(ctx, {
+    type: "line",
+    data: {
+      labels: labels,
+      datasets: [{
+        label: "Occupancy %",
+        data: values,
+        borderColor: "cyan",
+        fill: false
+      }]
+    }
+  });
+}
+
+async function update() {
+  const status = await fetchStatus();
+  const history = await fetchHistory();
+
+  renderGrid(status);
+  renderChart(history);
+}
+
+// refresh every 5 seconds
+update();
+setInterval(fetchData, 1000)
+</script>
+
+</body>
+</html>
